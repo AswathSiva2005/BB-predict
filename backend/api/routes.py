@@ -4,6 +4,7 @@ from pymongo.database import Database
 from backend.api.dependencies import get_current_user, get_db
 from backend.api.schemas import (
     DashboardResponse,
+    ExploreInsightsResponse,
     ExplainRequest,
     ExplainResponse,
     HistoryResponse,
@@ -25,6 +26,7 @@ from backend.services.auth_service import (
 from backend.services.dashboard_service import build_dashboard
 from backend.services.explanation_service import generate_lime_explanation, generate_shap_explanation
 from backend.services.history_service import get_history
+from backend.services.insight_service import get_explore_insights
 from backend.services.prediction_service import predict
 from backend.services.stock_service import get_research_overview, get_stocks_overview
 from backend.services.training_service import train
@@ -138,6 +140,14 @@ def dashboard(current_user: dict = Depends(get_current_user), db: Database = Dep
 @router.get('/stocks', response_model=StocksResponse)
 def stocks(current_user: dict = Depends(get_current_user)) -> StocksResponse:
     return StocksResponse.model_validate(get_stocks_overview())
+
+
+@router.get('/explore/insights', response_model=ExploreInsightsResponse)
+def explore_insights(
+    symbol: str | None = None,
+    current_user: dict = Depends(get_current_user),
+) -> ExploreInsightsResponse:
+    return ExploreInsightsResponse.model_validate(get_explore_insights(symbol))
 
 
 @router.get('/prediction', response_model=PredictionResponse)

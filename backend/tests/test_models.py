@@ -1,6 +1,7 @@
 import unittest
 
 from backend.ml.pipeline import MODEL_NAMES, create_models
+from backend.services.insight_service import get_explore_insights
 
 
 class ModelRegistryTests(unittest.TestCase):
@@ -16,6 +17,19 @@ class ModelRegistryTests(unittest.TestCase):
                 self.assertTrue(hasattr(model, 'fit'))
                 self.assertTrue(hasattr(model, 'predict'))
                 self.assertTrue(hasattr(model, 'predict_proba'))
+
+    def test_explore_insights_include_all_models_and_follow_symbol(self):
+        reliance = get_explore_insights('RELIANCE')
+        tcs = get_explore_insights('TCS')
+
+        self.assertEqual(
+            {result['model'] for result in reliance['model_results']},
+            set(MODEL_NAMES),
+        )
+        self.assertEqual(reliance['decision_insight']['symbol'], 'RELIANCE')
+        self.assertEqual(tcs['decision_insight']['symbol'], 'TCS')
+        self.assertTrue(reliance['decision_insight']['reasons'])
+        self.assertIn(reliance['decision_insight']['decision'], {'BUY', 'HOLD', 'SELL'})
 
 
 if __name__ == '__main__':

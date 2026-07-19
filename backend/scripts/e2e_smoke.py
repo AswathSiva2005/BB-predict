@@ -30,6 +30,11 @@ def run(include_explanations: bool = False, include_training: bool = False) -> N
         checks = {
             'profile': client.get('/api/auth/me', headers=headers),
             'stocks': client.get('/api/stocks', headers=headers),
+            'explore_insights': client.get(
+                '/api/explore/insights',
+                headers=headers,
+                params={'symbol': 'RELIANCE'},
+            ),
             'prediction': client.post(
                 '/api/predict',
                 headers=headers,

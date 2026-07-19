@@ -39,6 +39,7 @@ export const dashboardApi = {
   dashboard: () => api.get('/api/dashboard'),
   stocks: () => api.get('/api/stocks'),
   history: () => api.get('/api/history'),
+  exploreInsights: (symbol) => api.get('/api/explore/insights', { params: { symbol } }),
 };
 
 export const marketApi = {

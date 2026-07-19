@@ -49,6 +49,34 @@ class StocksResponse(BaseModel):
     stocks: list[StockSummary]
 
 
+class ModelResultRead(BaseModel):
+    model: str
+    accuracy: float
+    precision: float
+    recall: float
+    f1_score: float
+    roc_auc: float
+
+
+class DecisionInsightRead(BaseModel):
+    symbol: str
+    company_name: str
+    decision: Literal['BUY', 'HOLD', 'SELL']
+    confidence: float
+    model_name: str
+    headline: str
+    summary: str
+    reasons: list[str]
+    cautions: list[str]
+    probabilities: dict[str, float]
+    generated_from_sample: int
+
+
+class ExploreInsightsResponse(BaseModel):
+    model_results: list[ModelResultRead]
+    decision_insight: DecisionInsightRead
+
+
 class PredictionRequest(BaseModel):
     symbol: str | None = Field(default=None, min_length=1, max_length=20)
     sample_index: int = Field(default=-1, ge=-1)
