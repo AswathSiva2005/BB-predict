@@ -300,9 +300,9 @@ def _compute_global_shap_summary(
 ) -> dict[str, Path | list[dict[str, Any]] | shap.Explanation]:
     background_frame = _build_sample_frame(explanation_frame, min(sample_size, len(explanation_frame)))
     try:
-        # XGBoost has an exact, optimized tree explainer. The generic callable
-        # explainer scales poorly with 53 market features and made the UI appear
-        # stuck while thousands of model evaluations were performed.
+        # Tree-based models have an exact, optimized explainer. The generic
+        # callable explainer is retained for linear, neighbor, Bayes, SVM, ANN,
+        # and LSTM estimators.
         explainer = shap.TreeExplainer(model)
         explanation = explainer(background_frame)
     except Exception:

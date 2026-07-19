@@ -16,7 +16,7 @@ XAI-Stock is an explainable stock market trend prediction platform built with Fa
 
 - Frontend: React, Vite, Tailwind CSS, React Router, Axios, Recharts, Framer Motion
 - Backend: FastAPI, PyMongo, MongoDB Atlas, JWT authentication
-- ML and explainability: pandas, NumPy, scikit-learn, XGBoost, LightGBM, SHAP, LIME, TA, joblib, yfinance
+- ML and explainability: pandas, NumPy, scikit-learn, TensorFlow/Keras, SHAP, LIME, TA, joblib, yfinance
 
 ## Documentation
 
@@ -25,6 +25,7 @@ XAI-Stock is an explainable stock market trend prediction platform built with Fa
 - [API documentation](docs/API_DOCUMENTATION.md)
 - [System design documentation](docs/SYSTEM_DESIGN.md)
 - [Machine-learning validity audit](docs/ML_AUDIT.md)
+- [Base-paper methodology](docs/BASE_PAPER_METHODOLOGY.md)
 - [Project screenshots](docs/SCREENSHOTS.md)
 
 ## Local development

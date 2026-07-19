@@ -11,9 +11,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from joblib import dump
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -30,8 +33,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler, label_binarize
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
-from xgboost import XGBClassifier
-from lightgbm import LGBMClassifier
 
 from backend.ml.datasets import DATE_COLUMN, SYMBOL_COLUMN, TARGET_COLUMN, load_final_datasets
 from backend.ml.features import DEFAULT_SYMBOLS, FeatureEngineeringArtifacts, engineer_features_for_all_symbols
@@ -42,6 +43,16 @@ TRAINED_FIGURES_DIR = TRAINED_MODELS_DIR / 'figures'
 TRAINED_PREDICTIONS_DIR = TRAINED_MODELS_DIR / 'predictions'
 
 CLASS_LABELS = ['BUY', 'HOLD', 'SELL']
+PAPER_MODEL_NAMES = (
+    'Decision Tree',
+    'Random Forest',
+    'K-Nearest Neighbors',
+    'Naive Bayes',
+    'Logistic Regression',
+    'Support Vector Machine',
+    'Artificial Neural Network',
+)
+MODEL_NAMES = PAPER_MODEL_NAMES + ('Long Short-Term Memory',)
 
 
 @dataclass(slots=True)
@@ -72,7 +83,8 @@ class TrainingArtifacts:
     row_count: int
 
 
-SLOW_MODELS = frozenset({'Support Vector Machine', 'Logistic Regression'})
+SLOW_MODELS = frozenset({'Support Vector Machine', 'Logistic Regression', 'Artificial Neural Network'})
+NEURAL_MODELS = frozenset({'Artificial Neural Network', 'Long Short-Term Memory'})
 VIZ_MAX_ROWS = 2500
 
 
@@ -164,50 +176,112 @@ def split_time_series(
     return X_train, X_test, y_train, y_test
 
 
+def build_lstm_model(meta: dict[str, Any], random_state: int = 42) -> Any:
+    from tensorflow import keras
+    import tensorflow as tf
+
+    tf.keras.utils.set_random_seed(random_state)
+    n_features = int(meta['n_features_in_'])
+    model = keras.Sequential(
+        [
+            keras.layers.Input(shape=(n_features,)),
+            keras.layers.Reshape((1, n_features)),
+            keras.layers.LSTM(64, dropout=0.15),
+            keras.layers.Dense(32, activation='relu'),
+            keras.layers.Dropout(0.15),
+            keras.layers.Dense(3, activation='softmax'),
+        ],
+        name='stock_direction_lstm',
+    )
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=0.001),
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy'],
+    )
+    return model
+
+
 def create_models(random_state: int = 42) -> dict[str, Any]:
-    return {
-        'Logistic Regression': Pipeline(
-            steps=[
-                ('scaler', StandardScaler()),
-                ('model', LogisticRegression(max_iter=2000, random_state=random_state)),
-            ]
-        ),
+    models: dict[str, Any] = {
+        'Decision Tree': DecisionTreeClassifier(random_state=random_state),
         'Random Forest': RandomForestClassifier(
             n_estimators=300,
             max_depth=None,
             random_state=random_state,
             n_jobs=-1,
         ),
-        'Decision Tree': DecisionTreeClassifier(random_state=random_state),
+        'K-Nearest Neighbors': Pipeline(
+            steps=[
+                ('scaler', StandardScaler()),
+                ('model', KNeighborsClassifier(n_neighbors=5, weights='distance')),
+            ]
+        ),
+        'Naive Bayes': Pipeline(
+            steps=[
+                ('scaler', StandardScaler()),
+                ('model', GaussianNB()),
+            ]
+        ),
+        'Logistic Regression': Pipeline(
+            steps=[
+                ('scaler', StandardScaler()),
+                ('model', LogisticRegression(max_iter=2000, random_state=random_state)),
+            ]
+        ),
         'Support Vector Machine': Pipeline(
             steps=[
                 ('scaler', StandardScaler()),
                 ('model', SVC(kernel='rbf', probability=True, random_state=random_state)),
             ]
         ),
-        'Gradient Boosting': GradientBoostingClassifier(random_state=random_state),
-        'XGBoost': XGBClassifier(
-            objective='multi:softprob',
-            num_class=3,
-            n_estimators=300,
-            max_depth=5,
-            learning_rate=0.05,
-            subsample=0.9,
-            colsample_bytree=0.9,
-            reg_lambda=1.0,
-            random_state=random_state,
-            eval_metric='mlogloss',
-        ),
-        'LightGBM': LGBMClassifier(
-            objective='multiclass',
-            num_class=3,
-            n_estimators=300,
-            learning_rate=0.05,
-            max_depth=-1,
-            random_state=random_state,
-            verbosity=-1,
+        'Artificial Neural Network': Pipeline(
+            steps=[
+                ('scaler', StandardScaler()),
+                (
+                    'model',
+                    MLPClassifier(
+                        hidden_layer_sizes=(128, 64),
+                        activation='relu',
+                        solver='adam',
+                        batch_size=128,
+                        learning_rate_init=0.001,
+                        max_iter=120,
+                        early_stopping=True,
+                        validation_fraction=0.15,
+                        n_iter_no_change=10,
+                        random_state=random_state,
+                    ),
+                ),
+            ]
         ),
     }
+
+    try:
+        from scikeras.wrappers import KerasClassifier
+    except ImportError as exc:
+        raise RuntimeError(
+            'TensorFlow and SciKeras are required for the LSTM model. '
+            'Install backend/requirements.txt before training.'
+        ) from exc
+
+    models['Long Short-Term Memory'] = Pipeline(
+        steps=[
+            ('scaler', StandardScaler()),
+            (
+                'model',
+                KerasClassifier(
+                    model=build_lstm_model,
+                    model__random_state=random_state,
+                    epochs=30,
+                    batch_size=128,
+                    validation_split=0.15,
+                    verbose=0,
+                    random_state=random_state,
+                ),
+            ),
+        ]
+    )
+    return models
 
 
 def evaluate_model(
@@ -294,6 +368,26 @@ def save_model(estimator: Any, file_path: Path) -> Path:
     file_path.parent.mkdir(parents=True, exist_ok=True)
     dump(estimator, file_path)
     return file_path
+
+
+def remove_obsolete_model_artifacts(active_model_paths: Iterable[Path], best_model_path: Path) -> None:
+    keep = {path.resolve() for path in active_model_paths}
+    keep.add(best_model_path.resolve())
+    for candidate in TRAINED_MODELS_DIR.glob('*.joblib'):
+        if candidate.resolve() not in keep:
+            candidate.unlink()
+
+
+def remove_obsolete_diagnostic_artifacts(model_names: Iterable[str]) -> None:
+    active_slugs = {_model_slug(name) for name in model_names}
+    for candidate in TRAINED_PREDICTIONS_DIR.glob('*_predictions.csv'):
+        if not any(candidate.name == f'{slug}_predictions.csv' for slug in active_slugs):
+            candidate.unlink()
+    for candidate in TRAINED_FIGURES_DIR.glob('*'):
+        if not candidate.is_file() or candidate.name.startswith('model_comparison'):
+            continue
+        if not any(candidate.name.startswith(f'{slug}_') for slug in active_slugs):
+            candidate.unlink()
 
 
 def build_comparison_table(results: dict[str, ModelResult]) -> pd.DataFrame:
@@ -392,6 +486,25 @@ def plot_learning_curve_for_estimator(
     y_train: pd.Series,
     model_name: str,
 ) -> Path:
+    if model_name in NEURAL_MODELS:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.text(
+            0.5,
+            0.5,
+            'Neural training uses an internal chronological validation split.\n'
+            'Repeated cross-validation is skipped to avoid retraining leakage and excessive cost.',
+            ha='center',
+            va='center',
+            wrap=True,
+        )
+        ax.set_axis_off()
+        ax.set_title(f'Learning Strategy: {model_name}')
+        fig.tight_layout()
+        path = TRAINED_FIGURES_DIR / f'{_model_slug(model_name)}_learning_curve.png'
+        fig.savefig(path, bbox_inches='tight', dpi=150)
+        plt.close(fig)
+        return path
+
     curve_features, curve_target = _subsample_for_visualization(X_train, y_train)
     if model_name in SLOW_MODELS:
         curve_features, curve_target = _subsample_for_visualization(curve_features, curve_target, max_rows=1500)
@@ -444,12 +557,13 @@ def plot_feature_importance(
         coef = np.asarray(estimator.named_steps['model'].coef_)
         importances = np.abs(coef).mean(axis=0)
     else:
-        importance_features, importance_target = _subsample_for_visualization(X_train, y_train, max_rows=1500)
+        max_rows = 300 if model_name in NEURAL_MODELS else 1500
+        importance_features, importance_target = _subsample_for_visualization(X_train, y_train, max_rows=max_rows)
         permutation = permutation_importance(
             estimator,
             importance_features,
             importance_target,
-            n_repeats=3,
+            n_repeats=1 if model_name in NEURAL_MODELS else 3,
             random_state=42,
             scoring='f1_weighted',
             n_jobs=1,
@@ -517,6 +631,7 @@ def run_training_pipeline(symbols: Iterable[str] = DEFAULT_SYMBOLS) -> TrainingA
         best_result.estimator,
         TRAINED_MODELS_DIR / f'{_model_slug(best_result.name)}_best.joblib',
     )
+    remove_obsolete_model_artifacts(model_paths.values(), best_model_path)
 
     confusion_matrix_paths: dict[str, Path] = {}
     learning_curve_paths: dict[str, Path] = {}
@@ -537,6 +652,8 @@ def run_training_pipeline(symbols: Iterable[str] = DEFAULT_SYMBOLS) -> TrainingA
         feature_importance_paths[result.name] = plot_feature_importance(
             result.estimator, X_train, y_train, result.name, feature_names
         )
+
+    remove_obsolete_diagnostic_artifacts(results)
 
     return TrainingArtifacts(
         best_model_name=best_result.name,
