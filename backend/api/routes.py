@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from backend.api.dependencies import get_current_user, get_db
 from backend.api.schemas import (
@@ -14,7 +14,6 @@ from backend.api.schemas import (
     TrainResponse,
 )
 from backend.auth.schemas import MessageResponse, PasswordChange, TokenResponse, UserCreate, UserLogin, UserRead, UserUpdate
-from backend.models.user import User
 from backend.services.auth_service import (
     authenticate_user,
     build_token_response,
@@ -39,8 +38,8 @@ def health_check() -> dict[str, str]:
 
 
 @router.post('/auth/register', response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def register(payload: UserCreate, db: Session = Depends(get_db)) -> UserRead:
-    existing_user = db.query(User).filter(User.email == payload.email.lower()).first()
+def register(payload: UserCreate, db: Database = Depends(get_db)) -> UserRead:
+    existing_user = db.users.find_one({'email': payload.email.lower()})
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Email already registered')
     user = create_user(db, payload)
@@ -48,7 +47,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> UserRead:
 
 
 @router.post('/auth/login', response_model=TokenResponse)
-def login(payload: UserLogin, db: Session = Depends(get_db)) -> TokenResponse:
+def login(payload: UserLogin, db: Database = Depends(get_db)) -> TokenResponse:
     user = authenticate_user(db, payload.email, payload.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
@@ -56,15 +55,15 @@ def login(payload: UserLogin, db: Session = Depends(get_db)) -> TokenResponse:
 
 
 @router.get('/auth/me', response_model=UserRead)
-def read_current_user(current_user: User = Depends(get_current_user)) -> UserRead:
+def read_current_user(current_user: dict = Depends(get_current_user)) -> UserRead:
     return UserRead.model_validate(current_user)
 
 
 @router.put('/auth/me', response_model=UserRead)
 def edit_current_user(
     payload: UserUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
 ) -> UserRead:
     try:
         updated_user = update_user_profile(db, current_user, payload)
@@ -76,8 +75,8 @@ def edit_current_user(
 @router.put('/auth/password', response_model=MessageResponse)
 def update_password(
     payload: PasswordChange,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
 ) -> MessageResponse:
     try:
         change_user_password(db, current_user, payload)
@@ -87,19 +86,18 @@ def update_password(
 
 
 @router.delete('/auth/me', response_model=MessageResponse)
-def remove_account(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> MessageResponse:
+def remove_account(current_user: dict = Depends(get_current_user), db: Database = Depends(get_db)) -> MessageResponse:
     delete_user_account(db, current_user)
     return MessageResponse(detail='Account deleted successfully')
 
 
 @router.get('/research/overview')
-def research_overview(current_user: User = Depends(get_current_user)) -> dict:
+def research_overview(current_user: dict = Depends(get_current_user)) -> dict:
     return get_research_overview()
 
 
 @router.get('/shap')
 def shap_explanation(
-    current_user: User = Depends(get_current_user),
     symbol: str | None = None,
     sample_index: int = -1,
     sample_size: int = 200,
@@ -118,7 +116,6 @@ def shap_explanation(
 
 @router.get('/lime')
 def lime_explanation(
-    current_user: User = Depends(get_current_user),
     symbol: str | None = None,
     sample_index: int = -1,
     num_features: int = 10,
@@ -134,18 +131,18 @@ def lime_explanation(
 
 
 @router.get('/dashboard', response_model=DashboardResponse)
-def dashboard(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> DashboardResponse:
+def dashboard(current_user: dict = Depends(get_current_user), db: Database = Depends(get_db)) -> DashboardResponse:
     return DashboardResponse.model_validate(build_dashboard(db, current_user))
 
 
 @router.get('/stocks', response_model=StocksResponse)
-def stocks(current_user: User = Depends(get_current_user)) -> StocksResponse:
+def stocks(current_user: dict = Depends(get_current_user)) -> StocksResponse:
     return StocksResponse.model_validate(get_stocks_overview())
 
 
 @router.get('/prediction', response_model=PredictionResponse)
 def prediction(
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     symbol: str | None = None,
     sample_index: int = -1,
 ) -> PredictionResponse:
@@ -155,8 +152,8 @@ def prediction(
 @router.post('/predict', response_model=PredictionResponse)
 def predict_stock(
     payload: PredictRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
 ) -> PredictionResponse:
     return PredictionResponse.model_validate(predict(db=db, user=current_user, request=payload, persist=True))
 
@@ -164,22 +161,22 @@ def predict_stock(
 @router.post('/train', response_model=TrainResponse)
 def train_models(
     payload: TrainRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
 ) -> TrainResponse:
     return TrainResponse.model_validate(train(db=db, user=current_user, request=payload))
 
 
 @router.get('/history', response_model=HistoryResponse)
-def history(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> HistoryResponse:
+def history(current_user: dict = Depends(get_current_user), db: Database = Depends(get_db)) -> HistoryResponse:
     return HistoryResponse.model_validate(get_history(db, current_user))
 
 
 @router.post('/explain', response_model=ExplainResponse)
 def explain(
     payload: ExplainRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
 ) -> ExplainResponse:
     if payload.explanation_type == 'shap':
         shap_payload = generate_shap_explanation(

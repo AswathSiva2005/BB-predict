@@ -5,13 +5,12 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from backend.api.schemas import PredictRequest
 from backend.ml.features import DEFAULT_SYMBOLS
-from backend.ml.pipeline import load_final_datasets, prepare_feature_matrix
-from backend.models.history import PredictionHistory
-from backend.models.user import User
+from backend.ml.datasets import load_final_datasets
+from backend.ml.pipeline import prepare_feature_matrix
 from backend.services.explanation_service import load_best_model
 
 
@@ -92,34 +91,31 @@ def build_prediction(symbol: str | None = None, sample_index: int = -1) -> dict[
     }
 
 
-def record_prediction(db: Session, user: User, payload: dict[str, Any], explanation_type: str | None = None, explanation_payload: dict[str, Any] | None = None) -> PredictionHistory:
-    record = PredictionHistory(
-        user_id=user.id,
-        symbol=payload['symbol'],
-        sample_index=payload['sample_index'],
-        model_name=payload['model_name'],
-        predicted_label=payload['predicted_label'],
-        predicted_probability=payload['predicted_probability'],
-        probabilities=payload['probabilities'],
-        explanation_type=explanation_type,
-        input_context=payload.get('context'),
-        explanation_payload=explanation_payload,
-    )
-    db.add(record)
-    db.commit()
-    db.refresh(record)
-    return record
+def record_prediction(db: Database, user: dict, payload: dict[str, Any], explanation_type: str | None = None, explanation_payload: dict[str, Any] | None = None) -> str:
+    record = {
+        'user_id': user['id'],
+        'symbol': payload['symbol'],
+        'sample_index': payload['sample_index'],
+        'model_name': payload['model_name'],
+        'predicted_label': payload['predicted_label'],
+        'predicted_probability': payload['predicted_probability'],
+        'probabilities': payload['probabilities'],
+        'explanation_type': explanation_type,
+        'input_context': payload.get('context'),
+        'explanation_payload': explanation_payload,
+        'created_at': datetime.now(timezone.utc),
+    }
+    return str(db.prediction_history.insert_one(record).inserted_id)
 
 
-def predict(db: Session | None = None, user: User | None = None, request: PredictRequest | None = None, persist: bool = False, explanation_type: str | None = None, explanation_payload: dict[str, Any] | None = None) -> dict[str, Any]:
+def predict(db: Database | None = None, user: dict | None = None, request: PredictRequest | None = None, persist: bool = False, explanation_type: str | None = None, explanation_payload: dict[str, Any] | None = None) -> dict[str, Any]:
     payload = build_prediction(symbol=request.symbol if request else None, sample_index=request.sample_index if request else -1)
-    history_id: int | None = None
+    history_id: str | None = None
 
     if persist:
         if db is None or user is None:
             raise ValueError('db and user are required when persist is True.')
-        record = record_prediction(db, user, payload, explanation_type=explanation_type, explanation_payload=explanation_payload)
-        history_id = record.id
+        history_id = record_prediction(db, user, payload, explanation_type=explanation_type, explanation_payload=explanation_payload)
 
     payload['history_id'] = history_id
     return payload

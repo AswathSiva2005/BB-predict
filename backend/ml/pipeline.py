@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+import matplotlib
+
+matplotlib.use('Agg', force=True)
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -30,16 +33,13 @@ from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 
-from backend.ml.features import DEFAULT_SYMBOLS, FINAL_DIR, FeatureEngineeringArtifacts, engineer_features_for_all_symbols
+from backend.ml.datasets import DATE_COLUMN, SYMBOL_COLUMN, TARGET_COLUMN, load_final_datasets
+from backend.ml.features import DEFAULT_SYMBOLS, FeatureEngineeringArtifacts, engineer_features_for_all_symbols
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TRAINED_MODELS_DIR = PROJECT_ROOT / 'trained_models'
 TRAINED_FIGURES_DIR = TRAINED_MODELS_DIR / 'figures'
 TRAINED_PREDICTIONS_DIR = TRAINED_MODELS_DIR / 'predictions'
-
-TARGET_COLUMN = 'TARGET'
-DATE_COLUMN = 'Date'
-SYMBOL_COLUMN = 'Symbol'
 
 CLASS_LABELS = ['BUY', 'HOLD', 'SELL']
 
@@ -99,23 +99,6 @@ def build_training_directories() -> None:
     TRAINED_PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def load_final_datasets(symbols: Iterable[str] = DEFAULT_SYMBOLS) -> pd.DataFrame:
-    frames: list[pd.DataFrame] = []
-    for symbol in symbols:
-        file_path = FINAL_DIR / f'{symbol}_final.csv'
-        if not file_path.exists():
-            raise FileNotFoundError(f'Final engineered dataset not found for {symbol}: {file_path}')
-        frame = pd.read_csv(file_path)
-        frame[SYMBOL_COLUMN] = frame.get(SYMBOL_COLUMN, symbol)
-        frames.append(frame)
-
-    combined = pd.concat(frames, ignore_index=True)
-    if DATE_COLUMN in combined.columns:
-        combined[DATE_COLUMN] = pd.to_datetime(combined[DATE_COLUMN], errors='coerce')
-        combined = combined.dropna(subset=[DATE_COLUMN]).sort_values([DATE_COLUMN, SYMBOL_COLUMN]).reset_index(drop=True)
-    return combined
-
-
 def prepare_feature_matrix(data_frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series, pd.Series, LabelEncoder]:
     working_frame = data_frame.copy()
     if DATE_COLUMN in working_frame.columns:
@@ -124,7 +107,18 @@ def prepare_feature_matrix(data_frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.S
     if TARGET_COLUMN not in working_frame.columns:
         raise ValueError('TARGET column is required for model training.')
 
-    symbol_dummies = pd.get_dummies(working_frame[SYMBOL_COLUMN], prefix='SYMBOL', drop_first=False)
+    # Keep the feature schema identical for training and single-symbol inference.
+    # Without fixed categories, an AAPL request creates only SYMBOL_AAPL while the
+    # trained estimator expects one column for every supported stock.
+    symbol_series = pd.Series(
+        pd.Categorical(
+            working_frame[SYMBOL_COLUMN].astype(str).str.upper(),
+            categories=DEFAULT_SYMBOLS,
+        ),
+        index=working_frame.index,
+        name=SYMBOL_COLUMN,
+    )
+    symbol_dummies = pd.get_dummies(symbol_series, prefix='SYMBOL', drop_first=False)
     working_frame = working_frame.drop(columns=[SYMBOL_COLUMN])
     working_frame = pd.concat([working_frame, symbol_dummies], axis=1)
 
@@ -143,11 +137,19 @@ def split_time_series(
     features: pd.DataFrame,
     target: pd.Series,
     test_size: float = 0.2,
+    group_size: int = 1,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     if not 0 < test_size < 1:
         raise ValueError('test_size must be between 0 and 1.')
 
+    if group_size < 1:
+        raise ValueError('group_size must be at least one.')
+
     split_index = max(int(len(features) * (1 - test_size)), 1)
+    # Rows are ordered by date and then symbol. Keep every date entirely on
+    # one side of the holdout boundary to prevent cross-symbol date leakage.
+    if group_size > 1:
+        split_index = max((split_index // group_size) * group_size, group_size)
     if split_index >= len(features):
         split_index = len(features) - 1
 
@@ -284,6 +286,7 @@ def train_and_compare_models(
 
 
 def select_best_model(results: dict[str, ModelResult], metric: str = 'f1_score') -> ModelResult:
+    """Select the strongest holdout result using the requested classification metric."""
     return max(results.values(), key=lambda result: result.metrics.get(metric, float('-inf')))
 
 
@@ -485,13 +488,14 @@ def export_predictions(result: ModelResult, X_test: pd.DataFrame, y_test_encoder
 def run_training_pipeline(symbols: Iterable[str] = DEFAULT_SYMBOLS) -> TrainingArtifacts:
     build_training_directories()
 
-    if not any((FINAL_DIR / f'{symbol}_final.csv').exists() for symbol in symbols):
-        engineer_features_for_all_symbols(symbols)
-
     combined = load_final_datasets(symbols)
     features, target, feature_names_series, target_encoder = prepare_feature_matrix(combined)
     feature_names = feature_names_series.tolist()
-    X_train, X_test, y_train, y_test = split_time_series(features, target)
+    X_train, X_test, y_train, y_test = split_time_series(
+        features,
+        target,
+        group_size=combined[SYMBOL_COLUMN].nunique(),
+    )
 
     results = train_and_compare_models(X_train, X_test, y_train, y_test, feature_names)
     comparison_table = build_comparison_table(results)

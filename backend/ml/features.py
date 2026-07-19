@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
+import matplotlib
+
+matplotlib.use('Agg', force=True)
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd

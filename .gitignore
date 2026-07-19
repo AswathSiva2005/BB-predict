@@ -2,11 +2,26 @@
 frontend/node_modules/
 frontend/dist/
 
+# Local secrets
+.env
+frontend/.env
+
 # Backend
 backend/__pycache__/
 backend/**/*.pyc
 backend/.venv/
 backend/xai_stock.db
+backend/datasets/raw/
+backend/datasets/cleaned/
+backend/datasets/train/
+backend/datasets/test/
+backend/datasets/folds/
+backend/datasets/visualizations/
+backend/trained_models/explanations/
+backend/trained_models/figures/
+backend/trained_models/predictions/
+backend/trained_models/*.joblib
+!backend/trained_models/decision_tree_best.joblib
 
 # OS and editor files
 .DS_Store

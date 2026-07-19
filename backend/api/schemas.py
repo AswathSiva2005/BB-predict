@@ -8,6 +8,9 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class DashboardStockSummary(BaseModel):
     symbol: str
+    company_name: str
+    logo_url: str | None = None
+    website_url: str | None = None
     latest_date: date
     latest_close: float
     latest_target: str
@@ -30,6 +33,9 @@ class DashboardResponse(BaseModel):
 
 class StockSummary(BaseModel):
     symbol: str
+    company_name: str
+    logo_url: str | None = None
+    website_url: str | None = None
     latest_date: date
     latest_close: float
     latest_target: str
@@ -73,14 +79,14 @@ class PredictionResponse(BaseModel):
     probabilities: list[float]
     actual_label: str | None = None
     context: dict[str, Any]
-    history_id: int | None = None
+    history_id: str | None = None
 
 
 class ExplainResponse(BaseModel):
     explanation_type: Literal['shap', 'lime', 'both']
     shap: dict[str, Any] | None = None
     lime: dict[str, Any] | None = None
-    history_id: int | None = None
+    history_id: str | None = None
 
 
 class TrainResponse(BaseModel):
@@ -90,14 +96,14 @@ class TrainResponse(BaseModel):
     comparison_table_path: str
     comparison_plot_path: str
     row_count: int
-    history_id: int
+    history_id: str
 
 
 class PredictionHistoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    user_id: int
+    id: str
+    user_id: str
     symbol: str
     sample_index: int
     model_name: str
@@ -113,8 +119,8 @@ class PredictionHistoryRead(BaseModel):
 class TrainingHistoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    user_id: int | None = None
+    id: str
+    user_id: str | None = None
     status: str
     model_name: str | None = None
     best_model_path: str | None = None

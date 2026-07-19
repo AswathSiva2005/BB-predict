@@ -23,7 +23,7 @@ class PasswordChange(BaseModel):
 
 
 class UserRead(BaseModel):
-    id: int
+    id: str
     full_name: str
     email: EmailStr
     is_active: bool

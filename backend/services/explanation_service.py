@@ -4,9 +4,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 from typing import Any, Callable
 
 import lime.lime_tabular
+import matplotlib
+
+matplotlib.use('Agg', force=True)
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -14,13 +18,24 @@ import shap
 from joblib import load
 from sklearn.preprocessing import LabelEncoder
 
-from backend.ml.features import DEFAULT_SYMBOLS, engineer_features_for_all_symbols
-from backend.ml.pipeline import DATE_COLUMN, SYMBOL_COLUMN, TARGET_COLUMN, TRAINED_MODELS_DIR, load_final_datasets
+from backend.ml.features import DEFAULT_SYMBOLS
+from backend.ml.datasets import DATE_COLUMN, SYMBOL_COLUMN, TARGET_COLUMN, load_final_datasets
+from backend.ml.pipeline import TRAINED_MODELS_DIR
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TRAINED_EXPLANATIONS_DIR = TRAINED_MODELS_DIR / 'explanations'
 SHAP_EXPLANATIONS_DIR = TRAINED_EXPLANATIONS_DIR / 'shap'
 LIME_EXPLANATIONS_DIR = TRAINED_EXPLANATIONS_DIR / 'lime'
+EXPLANATION_GENERATION_LOCK = Lock()
+
+
+def _serialized_generation(function: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
+    """Prevent concurrent SHAP/LIME plotting from corrupting Matplotlib state."""
+    def wrapped(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        with EXPLANATION_GENERATION_LOCK:
+            return function(*args, **kwargs)
+
+    return wrapped
 
 
 @dataclass(slots=True)
@@ -33,11 +48,7 @@ class PreparedExplanationData:
 
 
 def _ensure_training_datasets() -> pd.DataFrame:
-    try:
-        return load_final_datasets(DEFAULT_SYMBOLS)
-    except FileNotFoundError:
-        engineer_features_for_all_symbols(DEFAULT_SYMBOLS)
-        return load_final_datasets(DEFAULT_SYMBOLS)
+    return load_final_datasets(DEFAULT_SYMBOLS)
 
 
 def _normalise_symbol(symbol: str | None) -> str | None:
@@ -288,9 +299,16 @@ def _compute_global_shap_summary(
     output_dir: Path,
 ) -> dict[str, Path | list[dict[str, Any]] | shap.Explanation]:
     background_frame = _build_sample_frame(explanation_frame, min(sample_size, len(explanation_frame)))
-    prediction_fn = _build_prediction_function(model, feature_names)
-    explainer = shap.Explainer(prediction_fn, background_frame, feature_names=feature_names)
-    explanation = explainer(background_frame)
+    try:
+        # XGBoost has an exact, optimized tree explainer. The generic callable
+        # explainer scales poorly with 53 market features and made the UI appear
+        # stuck while thousands of model evaluations were performed.
+        explainer = shap.TreeExplainer(model)
+        explanation = explainer(background_frame)
+    except Exception:
+        prediction_fn = _build_prediction_function(model, feature_names)
+        explainer = shap.Explainer(prediction_fn, background_frame, feature_names=feature_names)
+        explanation = explainer(background_frame)
     class_explanation = _select_class_explanation(explanation, class_index)
 
     shap_values = np.asarray(class_explanation.values)
@@ -356,10 +374,14 @@ def _compute_local_shap_plots(
     row_index: int,
     output_dir: Path,
 ) -> dict[str, Any]:
-    prediction_fn = _build_prediction_function(model, feature_names)
     background_frame = _build_sample_frame(explanation_frame, min(50, len(explanation_frame)))
-    explainer = shap.Explainer(prediction_fn, background_frame, feature_names=feature_names)
-    explanation = explainer(explanation_frame.iloc[[row_index]])
+    try:
+        explainer = shap.TreeExplainer(model)
+        explanation = explainer(explanation_frame.iloc[[row_index]])
+    except Exception:
+        prediction_fn = _build_prediction_function(model, feature_names)
+        explainer = shap.Explainer(prediction_fn, background_frame, feature_names=feature_names)
+        explanation = explainer(explanation_frame.iloc[[row_index]])
     class_explanation = _select_class_explanation(explanation, class_index)
     local_explanation = _select_row_explanation(class_explanation, 0)
 
@@ -404,6 +426,7 @@ def _compute_local_shap_plots(
     }
 
 
+@_serialized_generation
 def generate_shap_explanation(
     symbol: str | None = None,
     sample_index: int = -1,
@@ -480,6 +503,7 @@ def _predict_fn_for_lime(model: Any, feature_names: list[str]) -> Callable[[np.n
     return _build_prediction_function(model, feature_names)
 
 
+@_serialized_generation
 def generate_lime_explanation(
     symbol: str | None = None,
     sample_index: int = -1,
@@ -514,6 +538,7 @@ def generate_lime_explanation(
         predict_fn=prediction_fn,
         num_features=min(num_features, len(prepared.feature_names)),
         top_labels=1,
+        num_samples=800,
     )
 
     explanation_pairs = explanation.as_list(label=predicted_class_index)
