@@ -1,125 +1,13 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(true);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { registerAndLogin } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      await registerAndLogin({ full_name: fullName, email, password, remember });
-      navigate('/dashboard', { replace: true });
-    } catch (requestError) {
-      setError(requestError?.response?.data?.detail ?? 'Unable to create account.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-6xl items-center px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid w-full gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <motion.form
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          onSubmit={handleSubmit}
-          className="glass-panel rounded-[32px] p-8 shadow-2xl shadow-black/25"
-        >
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-400">Create account</p>
-          <h1 className="mt-3 font-display text-3xl font-semibold text-white">Register</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-400">Create a secure workspace to run predictions and explanations.</p>
-
-          <div className="mt-8 space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-sm text-slate-300">Full name</span>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-teal-400"
-                placeholder="Your name"
-                required
-              />
-            </label>
-            <label className="block">
-              <span className="mb-2 block text-sm text-slate-300">Email</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-teal-400"
-                placeholder="student@university.edu"
-                required
-              />
-            </label>
-            <label className="block">
-              <span className="mb-2 block text-sm text-slate-300">Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-teal-400"
-                placeholder="Minimum 8 characters"
-                required
-              />
-            </label>
-            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
-              <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} className="h-4 w-4 rounded border-white/20 bg-slate-950 text-teal-400 focus:ring-teal-400" />
-              Keep me signed in
-            </label>
-          </div>
-
-          {error ? <p className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-teal-400 via-cyan-400 to-emerald-400 px-4 py-3 font-semibold text-slate-950 transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? 'Creating...' : 'Register'}
-          </button>
-
-          <p className="mt-5 text-center text-sm text-slate-400">
-            Already have an account?{' '}
-            <Link to="/login" className="font-medium text-teal-200 transition hover:text-teal-100">
-              Sign in
-            </Link>
-          </p>
-        </motion.form>
-
-        <motion.div
-          initial={{ opacity: 0, x: 16 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="rounded-[32px] border border-white/10 bg-gradient-to-br from-cyan-500/15 via-slate-950 to-slate-950 p-8 shadow-2xl shadow-black/30"
-        >
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-200">Why register</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {[
-              ['Prediction history', 'Store every result with its explanation payload.'],
-              ['Training history', 'Track the best model version and training status.'],
-              ['SHAP and LIME', 'Generate local and global explanation artifacts.'],
-              ['Responsive UI', 'Access the platform on desktop and mobile.'],
-            ].map(([title, description]) => (
-              <div key={title} className="rounded-3xl bg-white/5 p-5">
-                <h3 className="font-display text-lg font-semibold text-white">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
+  const [fullName, setFullName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [remember, setRemember] = useState(true); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const { registerAndLogin } = useAuth(); const navigate = useNavigate();
+  const submit = async (event) => { event.preventDefault(); setLoading(true); setError(''); try { await registerAndLogin({ full_name: fullName, email, password, remember }); navigate('/dashboard', { replace: true }); } catch (e) { setError(e?.response?.data?.detail ?? 'Unable to create your account.'); } finally { setLoading(false); } };
+  return <div className="app-shell flex min-h-screen items-center px-4 py-8 sm:px-6"><div className="mx-auto grid w-full max-w-6xl overflow-hidden rounded-[32px] border border-white/10 bg-[#091827]/75 shadow-2xl shadow-slate-950/50 lg:grid-cols-[.9fr_1.1fr]">
+    <motion.form initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} onSubmit={submit} className="p-8 sm:p-12"><p className="page-kicker">Create your workspace</p><h1 className="mt-3 font-display text-3xl font-bold text-white">Start researching with clarity.</h1><p className="mt-2 text-sm leading-6 text-slate-400">Your predictions, explanations, and account activity stay in one place.</p><div className="mt-7 grid gap-4"><label className="text-sm font-medium text-slate-300">Full name<input className="input-field mt-2" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" required /></label><label className="text-sm font-medium text-slate-300">Email<input className="input-field mt-2" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required /></label><label className="text-sm font-medium text-slate-300">Password<input className="input-field mt-2" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 8 characters" required /></label><label className="flex items-center gap-3 text-sm text-slate-400"><input type="checkbox" className="h-4 w-4 accent-teal-400" checked={remember} onChange={(e) => setRemember(e.target.checked)} />Keep me signed in</label></div>{error ? <p className="mt-4 rounded-xl border border-rose-400/20 bg-rose-400/10 p-3 text-sm text-rose-100">{error}</p> : null}<button disabled={loading} className="btn-primary mt-7 w-full disabled:opacity-60">{loading ? 'Creating account…' : 'Create account'}</button><p className="mt-6 text-center text-sm text-slate-400">Already registered? <Link className="font-semibold text-teal-300" to="/login">Sign in</Link></p></motion.form>
+    <section className="relative overflow-hidden bg-gradient-to-br from-blue-500/20 via-cyan-400/10 to-transparent p-8 sm:p-12"><div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" /><div className="relative"><p className="page-kicker">Built for research</p><h2 className="page-title">Every decision has an evidence trail.</h2><div className="mt-10 space-y-4">{[['Prediction records','Keep each model signal and its confidence.'],['Visual explanations','Inspect SHAP and LIME feature impact.'],['Training activity','Track model runs and their performance.']].map(([title,text], index) => <div key={title} className="flex gap-4 rounded-2xl border border-white/10 bg-slate-950/25 p-5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-300/15 text-sm font-bold text-teal-200">0{index + 1}</span><div><h3 className="font-semibold text-white">{title}</h3><p className="mt-1 text-sm leading-6 text-slate-400">{text}</p></div></div>)}</div></div></section>
+  </div></div>;
 }

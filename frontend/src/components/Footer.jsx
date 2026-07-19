@@ -1,10 +1,3 @@
 export default function Footer() {
-  return (
-    <footer className="border-t border-white/8 bg-slate-950/80 px-4 py-5 text-sm text-slate-500 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p>Built for explainable stock trend research.</p>
-        <p>Tailwind CSS, Framer Motion, and FastAPI integration.</p>
-      </div>
-    </footer>
-  );
+  return <footer className="border-t border-slate-200 bg-white px-6 py-6 text-sm text-slate-500"><div className="mx-auto flex max-w-[1460px] flex-col gap-2 sm:flex-row sm:justify-between"><p>XAI-Stock · explainable stock-trend research.</p><p>Predictions are research signals, not financial advice.</p></div></footer>;
 }

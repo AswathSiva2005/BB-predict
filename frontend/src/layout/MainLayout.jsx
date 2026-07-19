@@ -6,16 +6,18 @@ import Sidebar from '../components/Sidebar';
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="pointer-events-none fixed inset-0 grid-shell opacity-35" />
+    <div className="app-shell text-slate-900">
       <Navbar onToggleSidebar={() => setSidebarOpen((value) => !value)} />
-      <div className="relative mx-auto flex max-w-[1600px]">
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <Outlet />
-        </main>
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="market-tape">
+        <span><b>NASDAQ</b> 23,716.31 <em>+0.42%</em></span>
+        <span><b>S&amp;P 500</b> 6,796.18 <em>+0.31%</em></span>
+        <span><b>DOW</b> 48,901.22 <em className="negative">-0.08%</em></span>
+        <span><b>XAI MODEL</b> XGBoost <em>Online</em></span>
+      </div>
+      <div className="relative mx-auto max-w-[1540px]">
+        <main className="page-enter min-w-0 px-4 py-8 sm:px-7 lg:px-10"><Outlet /></main>
       </div>
       <Footer />
     </div>

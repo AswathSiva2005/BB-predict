@@ -1,17 +1,28 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ExplanationImage from '../components/ExplanationImage';
 import StatBadge from '../components/StatBadge';
-import { marketApi, resolveArtifactUrl } from '../services/api';
+import { dashboardApi, marketApi, resolveArtifactUrl } from '../services/api';
 
 export default function Explainability() {
-  const [symbol, setSymbol] = useState('AAPL');
+  const [symbol, setSymbol] = useState('RELIANCE');
+  const [stocks, setStocks] = useState([]);
   const [sampleIndex, setSampleIndex] = useState(-1);
   const [shapData, setShapData] = useState(null);
   const [limeData, setLimeData] = useState(null);
   const [combinedData, setCombinedData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    dashboardApi.stocks()
+      .then(({ data }) => {
+        const nextStocks = data.stocks ?? [];
+        setStocks(nextStocks);
+        setSymbol(nextStocks[0]?.symbol ?? 'RELIANCE');
+      })
+      .catch((requestError) => setError(requestError?.response?.data?.detail ?? 'Unable to load Indian stocks.'));
+  }, []);
 
   const runShap = async () => {
     setLoading(true);
@@ -69,9 +80,11 @@ export default function Explainability() {
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">Generate transparent global and local explanations for the best trained model, and save each visualization automatically.</p>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_0.4fr_0.4fr_auto_auto_auto]">
-          <input value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase())} className="rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none" placeholder="AAPL" />
+          <select value={symbol} onChange={(event) => setSymbol(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none">
+            {stocks.map((stock) => <option key={stock.symbol} value={stock.symbol}>{stock.company_name} ({stock.symbol})</option>)}
+          </select>
           <input type="number" value={sampleIndex} onChange={(event) => setSampleIndex(Number(event.target.value))} className="rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none" />
-          <div className="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 lg:flex lg:items-center">Latest row</div>
+          <div className="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 lg:flex lg:items-center">Use -1 for the latest row</div>
           <button disabled={loading} onClick={runShap} type="button" className="rounded-2xl bg-white/10 px-4 py-3 font-semibold text-white transition hover:bg-white/15 disabled:opacity-60">GET SHAP</button>
           <button disabled={loading} onClick={runLime} type="button" className="rounded-2xl bg-white/10 px-4 py-3 font-semibold text-white transition hover:bg-white/15 disabled:opacity-60">GET LIME</button>
           <button disabled={loading} onClick={runCombined} type="button" className="rounded-2xl bg-gradient-to-r from-teal-400 via-cyan-400 to-emerald-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-60">POST Explain</button>

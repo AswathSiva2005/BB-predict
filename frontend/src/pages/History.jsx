@@ -8,13 +8,19 @@ export default function History() {
   const [history, setHistory] = useState({ predictions: [], trainings: [] });
   const [query, setQuery] = useState('');
   const [symbolFilter, setSymbolFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const response = await dashboardApi.history();
-      if (active) {
-        setHistory(response.data);
+      try {
+        const response = await dashboardApi.history();
+        if (active) setHistory(response.data);
+      } catch (requestError) {
+        if (active) setError(requestError?.response?.data?.detail ?? 'Unable to load account activity.');
+      } finally {
+        if (active) setLoading(false);
       }
     };
     load();
@@ -137,7 +143,10 @@ export default function History() {
         </div>
       </motion.div>
 
-      <ChartCard title="Prediction history" subtitle="Most recent saved predictions with confidence values.">
+      {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+      {loading ? <div className="glass-panel rounded-3xl p-6 text-sm text-slate-300">Loading your saved activity…</div> : null}
+
+      {!loading ? <ChartCard title="Prediction history" subtitle="Most recent saved predictions with confidence values.">
         <div className="space-y-3">
           {filteredPredictions.map((item) => (
             <div key={item.id} className="rounded-3xl border border-white/10 bg-slate-950/60 p-4">
@@ -156,9 +165,9 @@ export default function History() {
           ))}
           {!filteredPredictions.length ? <p className="text-sm text-slate-400">No prediction history matches the current filters.</p> : null}
         </div>
-      </ChartCard>
+      </ChartCard> : null}
 
-      <ChartCard title="Training history" subtitle="Completed training runs and best-model checkpoints.">
+      {!loading ? <ChartCard title="Training history" subtitle="Completed training runs and best-model checkpoints.">
         <div className="space-y-3">
           {filteredTrainings.map((item) => (
             <div key={item.id} className="rounded-3xl border border-white/10 bg-slate-950/60 p-4">
@@ -177,7 +186,7 @@ export default function History() {
           ))}
           {!filteredTrainings.length ? <p className="text-sm text-slate-400">No training history matches the current filters.</p> : null}
         </div>
-      </ChartCard>
+      </ChartCard> : null}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import ChartCard from '../components/ChartCard';
+import CompanyLogo from '../components/CompanyLogo';
 import ExplanationImage from '../components/ExplanationImage';
 import MarketCharts from '../components/MarketCharts';
 import ProbabilityBars from '../components/ProbabilityBars';
@@ -52,23 +53,33 @@ export default function Dashboard() {
         const latestPrediction = nextDashboard.latest_prediction;
         const historyPayload = historyResponse.data;
 
-        const symbol = latestPrediction?.symbol ?? nextStocks[0]?.symbol ?? 'AAPL';
-        const basePrediction = latestPrediction ?? (await marketApi.prediction({ symbol })).data;
+        const symbol = latestPrediction?.symbol ?? nextStocks[0]?.symbol ?? 'RELIANCE';
+        // Render the inexpensive dashboard data immediately. SHAP and LIME can
+        // take considerably longer and must not hold the entire page in its
+        // empty state while their plots are generated.
+        setDashboard(nextDashboard);
+        setStocks(nextStocks);
+        setSelectedSymbol(symbol);
+        setHistory(historyPayload ?? { predictions: [], trainings: [] });
 
-        const [shapResponse, limeResponse] = await Promise.all([
-          marketApi.shap({ symbol, sample_size: 140, max_display: 12 }).catch(() => null),
-          marketApi.lime({ symbol, num_features: 10 }).catch(() => null),
-        ]);
+        const basePrediction = latestPrediction ?? (await marketApi.prediction({ symbol })).data;
+        if (!active) {
+          return;
+        }
+        setPrediction(basePrediction);
+
+        let shapResponse = null;
+        let limeResponse = null;
+        try {
+          shapResponse = await marketApi.shap({ symbol, sample_size: 40, max_display: 10 });
+          limeResponse = await marketApi.lime({ symbol, num_features: 10 });
+        } catch (explanationError) {
+          setError(explanationError?.response?.data?.detail ?? 'Prediction loaded, but explainability generation failed.');
+        }
 
         if (!active) {
           return;
         }
-
-        setDashboard(nextDashboard);
-        setStocks(nextStocks);
-        setSelectedSymbol(symbol);
-        setPrediction(basePrediction);
-        setHistory(historyPayload ?? { predictions: [], trainings: [] });
         setShapData(shapResponse?.data ?? null);
         setLimeData(limeResponse?.data ?? null);
       } catch (requestError) {
@@ -99,37 +110,52 @@ export default function Dashboard() {
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-panel rounded-[32px] p-7 shadow-2xl shadow-black/25">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+            <div className="flex items-start gap-4">
+              <CompanyLogo stock={currentStock} size="lg" />
+              <div>
               <p className="text-sm font-semibold uppercase tracking-[0.28em] text-teal-200">Dashboard</p>
-              <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-white">Market intelligence at a glance.</h1>
+              <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-white">{currentStock?.company_name ?? 'Indian stock intelligence'}</h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
-                Monitor the current stock price, model prediction, confidence score, live charts, and SHAP/LIME explanations from the best trained model.
+                {currentStock?.symbol ? `${currentStock.symbol} · ` : ''}Review the latest dataset snapshot, confidence split, saved activity, and SHAP/LIME evidence.
               </p>
+              </div>
             </div>
 
             <select
               value={selectedSymbol}
+              disabled={loading}
               onChange={async (event) => {
                 const symbol = event.target.value;
+                setLoading(true);
                 setSelectedSymbol(symbol);
+                setError('');
+                setShapData(null);
+                setLimeData(null);
                 try {
-                  const [predictionResponse, shapResponse, limeResponse] = await Promise.all([
-                    marketApi.prediction({ symbol }),
-                    marketApi.shap({ symbol, sample_size: 140, max_display: 12 }).catch(() => null),
-                    marketApi.lime({ symbol, num_features: 10 }).catch(() => null),
-                  ]);
+                  const predictionResponse = await marketApi.prediction({ symbol });
                   setPrediction(predictionResponse.data);
+
+                  let shapResponse = null;
+                  let limeResponse = null;
+                  try {
+                    shapResponse = await marketApi.shap({ symbol, sample_size: 40, max_display: 10 });
+                    limeResponse = await marketApi.lime({ symbol, num_features: 10 });
+                  } catch (explanationError) {
+                    setError(explanationError?.response?.data?.detail ?? 'Prediction loaded, but explainability generation failed.');
+                  }
                   setShapData(shapResponse?.data ?? null);
                   setLimeData(limeResponse?.data ?? null);
                 } catch (requestError) {
                   setError(requestError?.response?.data?.detail ?? 'Unable to switch stock.');
+                } finally {
+                  setLoading(false);
                 }
               }}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none lg:w-56"
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none disabled:cursor-wait disabled:opacity-60 lg:w-56"
             >
               {stocks.map((stock) => (
                 <option key={stock.symbol} value={stock.symbol}>
-                  {stock.symbol}
+                  {stock.company_name} ({stock.symbol})
                 </option>
               ))}
             </select>

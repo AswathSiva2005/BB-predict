@@ -10,8 +10,8 @@ function ChartTooltip({ active, payload, label, formatter }) {
     <div className="rounded-2xl border border-white/10 bg-slate-950/95 px-4 py-3 text-sm text-slate-200 shadow-2xl shadow-black/40">
       <p className="font-semibold text-white">{label}</p>
       <div className="mt-2 space-y-1">
-        {payload.map((entry) => (
-          <p key={entry.dataKey} className="flex items-center justify-between gap-6 text-slate-300">
+        {payload.map((entry, index) => (
+          <p key={`${entry.dataKey}-${entry.name ?? 'series'}-${index}`} className="flex items-center justify-between gap-6 text-slate-300">
             <span>{entry.name ?? entry.dataKey}</span>
             <span>{formatter ? formatter(entry.value) : Number(entry.value).toFixed(2)}</span>
           </p>
@@ -93,8 +93,7 @@ export default function MarketCharts({ data = [] }) {
               <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
               <Tooltip content={<ChartTooltip formatter={(value) => `${Number(value).toFixed(1)}`} />} />
-              <Line type="monotone" dataKey="rsi" stroke="#38bdf8" strokeWidth={2.2} dot={false} />
-              <Area type="monotone" dataKey="rsi" stroke="#38bdf8" fill="url(#rsiFill)" />
+              <Area type="monotone" dataKey="rsi" stroke="#38bdf8" strokeWidth={2.2} fill="url(#rsiFill)" />
               <ReferenceLine y={70} stroke="#f97316" strokeDasharray="6 6" />
               <ReferenceLine y={30} stroke="#22c55e" strokeDasharray="6 6" />
             </AreaChart>

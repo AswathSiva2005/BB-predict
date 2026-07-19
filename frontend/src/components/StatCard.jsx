@@ -6,11 +6,11 @@ export default function StatCard({ label, value, caption, tone = 'from-teal-500/
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className={`rounded-[24px] border border-white/10 bg-gradient-to-br ${tone} p-6 shadow-[0_20px_70px_rgba(2,6,23,0.35)]`}
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none"
     >
-      <p className="text-xs uppercase tracking-[0.26em] text-slate-400">{label}</p>
-      <h3 className="mt-3 font-display text-3xl font-semibold text-white">{value}</h3>
-      <p className="mt-3 text-sm leading-6 text-slate-300">{caption}</p>
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
+      <h3 className="mt-3 font-display text-2xl font-bold text-slate-800">{value}</h3>
+      <p className="mt-2 text-xs leading-5 text-slate-500">{caption}</p>
     </motion.div>
   );
 }

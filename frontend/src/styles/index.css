@@ -1,13 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4 is loaded through a CSS import. The old @tailwind directives
+   are v3 syntax and caused every utility layout class to be omitted. */
+@import "tailwindcss";
+@config "../../tailwind.config.js";
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #020617;
+  background: #ffffff;
 }
 
 html {
@@ -18,11 +19,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, 0.16), transparent 26%),
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 24%),
-    linear-gradient(180deg, #020617 0%, #08111f 60%, #020617 100%);
-  color: #e2e8f0;
+  background: #ffffff;
+  color: #34384b;
 }
 
 a {
@@ -39,9 +37,10 @@ a {
 }
 
 .glass-panel {
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(18px);
+  background: linear-gradient(145deg, rgba(20, 35, 55, 0.94), rgba(10, 21, 37, 0.9));
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(20px);
 }
 
 .grid-shell {
@@ -50,3 +49,56 @@ a {
     linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
   background-size: 28px 28px;
 }
+
+.app-shell {
+  min-height: 100vh;
+  background: #fff;
+}
+
+.brand-orb { position: relative; display: inline-flex; width: 42px; height: 42px; overflow: hidden; border-radius: 50%; background: linear-gradient(145deg,#5367ff 0 48%,#11d8b0 49%); box-shadow: 0 8px 22px rgba(83,103,255,.22); }
+.brand-orb i { position:absolute; width:46px; height:18px; left:-2px; bottom:6px; border-radius:50%; background:#0bcfa8; transform:rotate(-12deg); }
+.market-search { display:flex; min-width:360px; align-items:center; gap:12px; border:1px solid #e4e6ec; border-radius:10px; padding:10px 13px; color:#777b8c; font-size:13px; }
+.market-search span:nth-child(2) { flex:1; }
+.market-search kbd { border:0; background:transparent; color:#9a9dab; font-size:11px; }
+.icon-button { display:inline-flex; width:40px; height:40px; align-items:center; justify-content:center; border:1px solid #e5e7eb; border-radius:50%; background:#fff; color:#4e5368; }
+.user-avatar { display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:50%; background:#263248; color:white; font-weight:800; }
+.logout-button { border:1px solid #e4e6ec; border-radius:9px; background:#fff; padding:9px 14px; color:#555a6e; font-size:13px; font-weight:700; }
+.market-nav-link { position:relative; display:flex; align-items:center; gap:10px; padding:15px 14px; color:#747888; font-size:14px; font-weight:650; transition:.2s; }
+.market-nav-link:hover,.market-nav-link.active { color:#303448; }
+.market-nav-link.active::after { position:absolute; right:12px; bottom:0; left:12px; height:3px; border-radius:3px 3px 0 0; background:#00b386; content:''; }
+.market-tape { display:flex; justify-content:center; gap:52px; overflow:hidden; border-bottom:1px solid #eceef2; background:#fff; padding:13px 24px; color:#666b7e; font-size:12px; white-space:nowrap; }
+.market-tape b { margin-right:8px; color:#3f4457; }
+.market-tape em { margin-left:6px; color:#00a980; font-style:normal; font-weight:700; }
+.market-tape .negative { color:#ef5b43; }
+
+.app-shell .glass-panel { background:#fff; border:1px solid #e5e7eb; box-shadow:none; backdrop-filter:none; }
+.app-shell .text-white { color:#34384b !important; }
+.app-shell .text-slate-100,.app-shell .text-slate-200,.app-shell .text-slate-300 { color:#555a6e !important; }
+.app-shell .text-slate-400,.app-shell .text-slate-500 { color:#858999 !important; }
+.app-shell .bg-slate-950\/60,.app-shell .bg-slate-950\/70 { background:#fafbfc !important; }
+.app-shell .bg-white\/5 { background:#fafbfc !important; }
+.app-shell .border-white\/10 { border-color:#e7e9ee !important; }
+.app-shell select,.app-shell input { color-scheme:light; }
+.app-shell select { background-color:#fff !important; color:#34384b !important; }
+
+.page-wrap { max-width: 1440px; margin: 0 auto; }
+.page-kicker { color: #5eead4; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
+.page-title { margin-top: 0.65rem; color: #f8fafc; font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.9rem, 3vw, 3rem); font-weight: 700; letter-spacing: -0.045em; line-height: 1.05; }
+.page-copy { margin-top: 0.9rem; max-width: 48rem; color: #94a3b8; font-size: 0.94rem; line-height: 1.7; }
+.input-field { width: 100%; border: 1px solid rgba(148,163,184,.2); border-radius: .9rem; background: rgba(2, 12, 27, .55); padding: .78rem .9rem; color: #f8fafc; transition: border-color .2s, box-shadow .2s; }
+.input-field:focus { border-color: rgba(45,212,191,.9); box-shadow: 0 0 0 3px rgba(45,212,191,.1); outline: 0; }
+.btn-primary { display: inline-flex; align-items: center; justify-content: center; border-radius: .9rem; background: linear-gradient(115deg,#5eead4,#38bdf8); padding: .78rem 1.1rem; color: #062033; font-weight: 800; transition: transform .2s, filter .2s; }
+.btn-primary:hover { filter: brightness(1.05); transform: translateY(-1px); }
+.btn-secondary { display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(148,163,184,.2); border-radius: .9rem; background: rgba(255,255,255,.04); padding: .78rem 1.1rem; color: #e2e8f0; font-weight: 700; transition: background .2s; }
+.btn-secondary:hover { background: rgba(255,255,255,.09); }
+
+.page-enter { animation: page-enter 420ms ease-out both; }
+@keyframes page-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+button, input, select { font: inherit; }
+input, select { color-scheme: light; }
+input:focus, select:focus, button:focus-visible, a:focus-visible { outline: 2px solid #2dd4bf; outline-offset: 3px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #f5f6f8; }
+::-webkit-scrollbar-thumb { background: #c9ccd5; border-radius: 999px; }
+
+@media (max-width: 1023px) { .market-tape { justify-content:flex-start; gap:28px; } .market-nav-link.active::after { top:8px; right:auto; bottom:8px; left:0; width:3px; height:auto; } }
