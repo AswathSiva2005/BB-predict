@@ -324,9 +324,9 @@ export default function Dashboard() {
               </div>
 
               <div className="rounded-2xl border border-amber-400/15 bg-amber-400/5 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200">Risk check</p>
+                <p className="text-xs text-black font-semibold uppercase tracking-[0.2em] text-amber-200">Risk check</p>
                 {exploreInsights.decision_insight.cautions.map((caution) => (
-                  <p key={caution} className="mt-2 text-xs leading-5 text-amber-100/70">• {caution}</p>
+                  <p key={caution} className="mt-2 text-black text-xs leading-5 text-amber-100/70">• {caution}</p>
                 ))}
               </div>
             </div>
