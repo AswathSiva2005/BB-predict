@@ -17,7 +17,6 @@ export default function CompanyLogo({ stock, size = 'md', className = '' }) {
           src={stock.logo_url}
           alt={`${stock.company_name ?? stock.symbol} logo`}
           className="h-full w-full object-contain"
-          loading="lazy"
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
         />

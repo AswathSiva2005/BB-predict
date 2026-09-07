@@ -35,7 +35,7 @@ export default function MainLayout() {
     return (
       <span className="market-tape-item" key={`${keyPrefix}-${stock.symbol}`}>
         {stock.logo_url ? (
-          <img src={stock.logo_url} alt="" className="market-tape-logo" loading="lazy" referrerPolicy="no-referrer" />
+          <img src={stock.logo_url} alt="" className="market-tape-logo" referrerPolicy="no-referrer" />
         ) : null}
         <span className="market-tape-info">
           <b>{stock.symbol}</b>
