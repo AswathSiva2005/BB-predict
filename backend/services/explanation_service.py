@@ -156,7 +156,10 @@ def _build_prediction_function(model: Any, feature_names: list[str]) -> Callable
         else:
             feature_frame = pd.DataFrame(np.asarray(samples), columns=feature_names)
         if hasattr(model, 'predict_proba'):
-            return model.predict_proba(feature_frame)
+            probabilities = np.asarray(model.predict_proba(feature_frame), dtype=float)
+            if probabilities.ndim == 1:
+                probabilities = probabilities.reshape(1, -1)
+            return probabilities
         predictions = model.predict(feature_frame)
         return np.asarray(predictions)
 
@@ -300,9 +303,9 @@ def _compute_global_shap_summary(
 ) -> dict[str, Path | list[dict[str, Any]] | shap.Explanation]:
     background_frame = _build_sample_frame(explanation_frame, min(sample_size, len(explanation_frame)))
     try:
-        # Tree-based models have an exact, optimized explainer. The generic
-        # callable explainer is retained for linear, neighbor, Bayes, SVM, ANN,
-        # and LSTM estimators.
+        # Tree-based models (including XGBoost) have an exact, optimized explainer.
+        # The generic callable explainer is retained for linear, neighbor, Bayes,
+        # SVM, and ANN estimators.
         explainer = shap.TreeExplainer(model)
         explanation = explainer(background_frame)
     except Exception:

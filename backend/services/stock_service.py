@@ -11,21 +11,12 @@ from backend.ml.datasets import load_final_datasets
 
 
 COMPANY_METADATA = {
-    'RELIANCE': ('Reliance Industries', 'ril.com'),
-    'TCS': ('Tata Consultancy Services', 'tcs.com'),
-    'INFY': ('Infosys', 'infosys.com'),
-    'HDFCBANK': ('HDFC Bank', 'hdfcbank.com'),
-    'ICICIBANK': ('ICICI Bank', 'icicibank.com'),
-    'SBIN': ('State Bank of India', 'sbi.co.in'),
-    'TATAMOTORS': ('Tata Motors', 'tatamotors.com'),
-    'WIPRO': ('Wipro', 'wipro.com'),
-    'HCLTECH': ('HCLTech', 'hcltech.com'),
-    'LT': ('Larsen & Toubro', 'larsentoubro.com'),
-    'ASIANPAINT': ('Asian Paints', 'asianpaints.com'),
-    'SUNPHARMA': ('Sun Pharmaceutical Industries', 'sunpharma.com'),
-    'ITC': ('ITC Limited', 'itcportal.com'),
-    'BAJFINANCE': ('Bajaj Finance', 'bajajfinserv.in'),
-    'BHARTIARTL': ('Bharti Airtel', 'airtel.in'),
+    'AAPL': ('Apple Inc.', 'apple.com'),
+    'AMZN': ('Amazon.com, Inc.', 'amazon.com'),
+    'GOOGL': ('Alphabet Inc.', 'abc.xyz'),
+    'MSFT': ('Microsoft Corporation', 'microsoft.com'),
+    'NVDA': ('NVIDIA Corporation', 'nvidia.com'),
+    'TSLA': ('Tesla, Inc.', 'tesla.com'),
 }
 
 
@@ -76,6 +67,55 @@ def get_stocks_overview() -> dict[str, list[dict[str, Any]]]:
 
     summaries.sort(key=lambda item: item['symbol'])
     return {'stocks': summaries}
+
+
+PERIOD_TRADING_DAYS: dict[str, int | None] = {
+    '1W': 5,
+    '1M': 22,
+    '3M': 66,
+    '6M': 132,
+    '1Y': 252,
+    '5Y': 1260,
+    'ALL': None,
+}
+
+
+def get_stock_candles(symbol: str, period: str = '3M') -> dict[str, Any]:
+    period_key = (period or '3M').upper()
+    if period_key not in PERIOD_TRADING_DAYS:
+        raise ValueError(f"Unsupported period '{period}'. Choose one of {', '.join(PERIOD_TRADING_DAYS)}.")
+
+    combined = _load_final_frame()
+    if 'Symbol' not in combined.columns or 'Date' not in combined.columns:
+        raise ValueError('Symbol and Date columns are required for the candles endpoint.')
+
+    symbol_key = symbol.upper()
+    group = combined[combined['Symbol'].astype(str).str.upper() == symbol_key].copy()
+    if group.empty:
+        raise ValueError(f"No data found for symbol '{symbol}'.")
+
+    group['Date'] = pd.to_datetime(group['Date'], errors='coerce')
+    group = group.dropna(subset=['Date']).sort_values('Date')
+
+    window = PERIOD_TRADING_DAYS[period_key]
+    if window is not None:
+        group = group.tail(window)
+
+    candles = [
+        {
+            'date': _serialize_value(row['Date']),
+            'open': float(row['Open']),
+            'high': float(row['High']),
+            'low': float(row['Low']),
+            'close': float(row['Close']),
+            'volume': float(row['Volume']),
+            'rsi': _serialize_value(row.get('RSI')),
+            'macd': _serialize_value(row.get('MACD')),
+        }
+        for _, row in group.iterrows()
+    ]
+
+    return {'symbol': symbol_key, 'period': period_key, 'candles': candles}
 
 
 def get_research_overview() -> dict:

@@ -49,6 +49,23 @@ class StocksResponse(BaseModel):
     stocks: list[StockSummary]
 
 
+class CandleRead(BaseModel):
+    date: date
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+    rsi: float | None = None
+    macd: float | None = None
+
+
+class CandlesResponse(BaseModel):
+    symbol: str
+    period: str
+    candles: list[CandleRead]
+
+
 class ModelResultRead(BaseModel):
     model: str
     accuracy: float

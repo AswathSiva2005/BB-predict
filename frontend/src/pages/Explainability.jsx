@@ -5,7 +5,7 @@ import StatBadge from '../components/StatBadge';
 import { dashboardApi, marketApi, resolveArtifactUrl } from '../services/api';
 
 export default function Explainability() {
-  const [symbol, setSymbol] = useState('RELIANCE');
+  const [symbol, setSymbol] = useState('AAPL');
   const [stocks, setStocks] = useState([]);
   const [sampleIndex, setSampleIndex] = useState(-1);
   const [shapData, setShapData] = useState(null);
@@ -19,9 +19,9 @@ export default function Explainability() {
       .then(({ data }) => {
         const nextStocks = data.stocks ?? [];
         setStocks(nextStocks);
-        setSymbol(nextStocks[0]?.symbol ?? 'RELIANCE');
+        setSymbol(nextStocks[0]?.symbol ?? 'AAPL');
       })
-      .catch((requestError) => setError(requestError?.response?.data?.detail ?? 'Unable to load Indian stocks.'));
+      .catch((requestError) => setError(requestError?.response?.data?.detail ?? 'Unable to load the stock list.'));
   }, []);
 
   const runShap = async () => {

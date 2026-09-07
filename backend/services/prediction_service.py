@@ -65,7 +65,8 @@ def build_prediction(symbol: str | None = None, sample_index: int = -1) -> dict[
     model_name, model, model_path = load_best_model()
     feature_row = features.iloc[[row_index]]
     if hasattr(model, 'predict_proba'):
-        probabilities = model.predict_proba(feature_row)[0].astype(float)
+        raw_probabilities = np.asarray(model.predict_proba(feature_row), dtype=float)
+        probabilities = raw_probabilities[0] if raw_probabilities.ndim > 1 else raw_probabilities
         predicted_class_index = int(np.argmax(probabilities))
     else:
         predicted_class_index = int(model.predict(feature_row)[0])

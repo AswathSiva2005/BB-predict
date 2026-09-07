@@ -33,12 +33,12 @@ def run(include_explanations: bool = False, include_training: bool = False) -> N
             'explore_insights': client.get(
                 '/api/explore/insights',
                 headers=headers,
-                params={'symbol': 'RELIANCE'},
+                params={'symbol': 'AAPL'},
             ),
             'prediction': client.post(
                 '/api/predict',
                 headers=headers,
-                json={'symbol': 'RELIANCE', 'sample_index': -1},
+                json={'symbol': 'AAPL', 'sample_index': -1},
             ),
             'history': client.get('/api/history', headers=headers),
         }
@@ -53,7 +53,7 @@ def run(include_explanations: bool = False, include_training: bool = False) -> N
                 '/api/explain',
                 headers=headers,
                 json={
-                    'symbol': 'RELIANCE',
+                    'symbol': 'AAPL',
                     'sample_index': -1,
                     'explanation_type': 'both',
                     'sample_size': 30,

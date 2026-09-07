@@ -33,6 +33,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler, label_binarize
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
 
 from backend.ml.datasets import DATE_COLUMN, SYMBOL_COLUMN, TARGET_COLUMN, load_final_datasets
 from backend.ml.features import DEFAULT_SYMBOLS, FeatureEngineeringArtifacts, engineer_features_for_all_symbols
@@ -52,7 +53,7 @@ PAPER_MODEL_NAMES = (
     'Support Vector Machine',
     'Artificial Neural Network',
 )
-MODEL_NAMES = PAPER_MODEL_NAMES + ('Long Short-Term Memory',)
+MODEL_NAMES = PAPER_MODEL_NAMES + ('XGBoost',)
 
 
 @dataclass(slots=True)
@@ -84,7 +85,7 @@ class TrainingArtifacts:
 
 
 SLOW_MODELS = frozenset({'Support Vector Machine', 'Logistic Regression', 'Artificial Neural Network'})
-NEURAL_MODELS = frozenset({'Artificial Neural Network', 'Long Short-Term Memory'})
+NEURAL_MODELS = frozenset({'Artificial Neural Network'})
 VIZ_MAX_ROWS = 2500
 
 
@@ -176,31 +177,6 @@ def split_time_series(
     return X_train, X_test, y_train, y_test
 
 
-def build_lstm_model(meta: dict[str, Any], random_state: int = 42) -> Any:
-    from tensorflow import keras
-    import tensorflow as tf
-
-    tf.keras.utils.set_random_seed(random_state)
-    n_features = int(meta['n_features_in_'])
-    model = keras.Sequential(
-        [
-            keras.layers.Input(shape=(n_features,)),
-            keras.layers.Reshape((1, n_features)),
-            keras.layers.LSTM(64, dropout=0.15),
-            keras.layers.Dense(32, activation='relu'),
-            keras.layers.Dropout(0.15),
-            keras.layers.Dense(3, activation='softmax'),
-        ],
-        name='stock_direction_lstm',
-    )
-    model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=0.001),
-        loss='sparse_categorical_crossentropy',
-        metrics=['accuracy'],
-    )
-    return model
-
-
 def create_models(random_state: int = 42) -> dict[str, Any]:
     models: dict[str, Any] = {
         'Decision Tree': DecisionTreeClassifier(random_state=random_state),
@@ -254,33 +230,18 @@ def create_models(random_state: int = 42) -> dict[str, Any]:
                 ),
             ]
         ),
+        'XGBoost': XGBClassifier(
+            n_estimators=300,
+            max_depth=6,
+            learning_rate=0.1,
+            subsample=0.9,
+            colsample_bytree=0.9,
+            objective='multi:softprob',
+            eval_metric='mlogloss',
+            random_state=random_state,
+            n_jobs=-1,
+        ),
     }
-
-    try:
-        from scikeras.wrappers import KerasClassifier
-    except ImportError as exc:
-        raise RuntimeError(
-            'TensorFlow and SciKeras are required for the LSTM model. '
-            'Install backend/requirements.txt before training.'
-        ) from exc
-
-    models['Long Short-Term Memory'] = Pipeline(
-        steps=[
-            ('scaler', StandardScaler()),
-            (
-                'model',
-                KerasClassifier(
-                    model=build_lstm_model,
-                    model__random_state=random_state,
-                    epochs=30,
-                    batch_size=128,
-                    validation_split=0.15,
-                    verbose=0,
-                    random_state=random_state,
-                ),
-            ),
-        ]
-    )
     return models
 
 

@@ -3,6 +3,7 @@ from pymongo.database import Database
 
 from backend.api.dependencies import get_current_user, get_db
 from backend.api.schemas import (
+    CandlesResponse,
     DashboardResponse,
     ExploreInsightsResponse,
     ExplainRequest,
@@ -28,7 +29,7 @@ from backend.services.explanation_service import generate_lime_explanation, gene
 from backend.services.history_service import get_history
 from backend.services.insight_service import get_explore_insights
 from backend.services.prediction_service import predict
-from backend.services.stock_service import get_research_overview, get_stocks_overview
+from backend.services.stock_service import get_research_overview, get_stock_candles, get_stocks_overview
 from backend.services.training_service import train
 
 router = APIRouter(prefix='/api', tags=['api'])
@@ -140,6 +141,18 @@ def dashboard(current_user: dict = Depends(get_current_user), db: Database = Dep
 @router.get('/stocks', response_model=StocksResponse)
 def stocks(current_user: dict = Depends(get_current_user)) -> StocksResponse:
     return StocksResponse.model_validate(get_stocks_overview())
+
+
+@router.get('/stocks/{symbol}/candles', response_model=CandlesResponse)
+def stock_candles(
+    symbol: str,
+    period: str = '3M',
+    current_user: dict = Depends(get_current_user),
+) -> CandlesResponse:
+    try:
+        return CandlesResponse.model_validate(get_stock_candles(symbol, period))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get('/explore/insights', response_model=ExploreInsightsResponse)

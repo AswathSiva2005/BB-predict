@@ -14,9 +14,8 @@ machine learning in stock market predictions?”, Heliyon 10 (2024), e24123,
 - Support Vector Machine
 - Artificial Neural Network
 
-The project additionally evaluates a Long Short-Term Memory neural network, as
-required by this implementation. Gradient Boosting, XGBoost, and LightGBM are
-not part of the comparison.
+The project additionally evaluates XGBoost, as required by this
+implementation. Gradient Boosting and LightGBM are not part of the comparison.
 
 The paper predicts next-day rise/fall directions for developed-market indices.
 This project preserves its existing product contract of next-session
@@ -25,7 +24,6 @@ algorithm comparison. All models receive the same leakage-controlled,
 chronological 80/20 holdout and are ranked by weighted F1, with accuracy,
 precision, recall, ROC-AUC, and confusion matrices retained for comparison.
 
-The ANN uses two fully connected hidden layers. The LSTM uses a recurrent layer
-over the engineered observation representation followed by dense
-classification layers. Scaling is fitted only from the training partition for
-models that require it.
+The ANN uses two fully connected hidden layers. XGBoost is a gradient-boosted
+tree ensemble trained directly on the engineered feature matrix. Scaling is
+fitted only from the training partition for models that require it.

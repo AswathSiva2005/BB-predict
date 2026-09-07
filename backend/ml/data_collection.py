@@ -15,9 +15,7 @@ from backend.ml.preprocessing import (
 from backend.ml.splitting import time_series_split_frames, walk_forward_validation_frames
 
 DEFAULT_SYMBOLS: tuple[str, ...] = (
-    'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN',
-    'TATAMOTORS', 'WIPRO', 'HCLTECH', 'LT', 'ASIANPAINT',
-    'SUNPHARMA', 'ITC', 'BAJFINANCE', 'BHARTIARTL',
+    'AAPL', 'AMZN', 'GOOGL', 'MSFT', 'NVDA', 'TSLA',
 )
 DEFAULT_START_DATE = '2018-01-01'
 DEFAULT_END_DATE = None

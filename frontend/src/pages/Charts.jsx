@@ -1,14 +1,11 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import MarketCharts from '../components/MarketCharts';
-import { dashboardApi, marketApi } from '../services/api';
-import { resolveChartSeriesFromPrediction } from '../lib/market';
+import { dashboardApi } from '../services/api';
 
 export default function Charts() {
   const [stocks, setStocks] = useState([]);
-  const [symbol, setSymbol] = useState('RELIANCE');
-  const [prediction, setPrediction] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [symbol, setSymbol] = useState('AAPL');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -19,7 +16,7 @@ export default function Charts() {
         if (!active) return;
         const nextStocks = response.data.stocks ?? [];
         setStocks(nextStocks);
-        setSymbol(nextStocks[0]?.symbol ?? 'RELIANCE');
+        setSymbol(nextStocks[0]?.symbol ?? 'AAPL');
       } catch (requestError) {
         if (active) setError(requestError?.response?.data?.detail ?? 'Unable to load the market list.');
       }
@@ -29,27 +26,6 @@ export default function Charts() {
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    const loadPrediction = async () => {
-      setLoading(true);
-      try {
-        const response = await marketApi.prediction({ symbol });
-        if (active) setPrediction(response.data);
-      } catch (requestError) {
-        if (active) setError(requestError?.response?.data?.detail ?? 'Unable to load chart data.');
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    loadPrediction();
-    return () => {
-      active = false;
-    };
-  }, [symbol]);
-
-  const chartData = resolveChartSeriesFromPrediction(prediction ?? { symbol });
 
   return (
     <div className="space-y-8 pb-10">
@@ -69,9 +45,8 @@ export default function Charts() {
       </motion.div>
 
       {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
-      {loading ? <div className="glass-panel rounded-3xl p-6 text-sm text-slate-300">Loading selected market data…</div> : null}
 
-      {!loading ? <MarketCharts data={chartData} /> : null}
+      <MarketCharts symbol={symbol} />
     </div>
   );
 }

@@ -8,7 +8,7 @@ import ProbabilityBars from '../components/ProbabilityBars';
 import StatBadge from '../components/StatBadge';
 import StatCard from '../components/StatCard';
 import { dashboardApi, marketApi, resolveArtifactUrl } from '../services/api';
-import { buildProbabilitySeries, formatCurrency, formatPercent, resolveChartSeriesFromPrediction, selectChartWindow } from '../lib/market';
+import { buildProbabilitySeries, formatCurrency, formatPercent } from '../lib/market';
 
 function getContextValue(context = {}, keys = []) {
   for (const key of keys) {
@@ -51,10 +51,17 @@ export default function Dashboard() {
 
         const nextDashboard = dashboardResponse.data;
         const nextStocks = stocksResponse.data.stocks ?? [];
-        const latestPrediction = nextDashboard.latest_prediction;
         const historyPayload = historyResponse.data;
 
-        const symbol = latestPrediction?.symbol ?? nextStocks[0]?.symbol ?? 'RELIANCE';
+        // A saved prediction can reference a symbol that is no longer part of
+        // the tracked dataset (e.g. after switching to a different set of
+        // companies). Only reuse it as the live selection when it's still valid.
+        const validSymbols = new Set(nextStocks.map((stock) => stock.symbol));
+        const latestPrediction = validSymbols.has(nextDashboard.latest_prediction?.symbol)
+          ? nextDashboard.latest_prediction
+          : null;
+
+        const symbol = latestPrediction?.symbol ?? nextStocks[0]?.symbol ?? 'AAPL';
         // Render the inexpensive dashboard data immediately. SHAP and LIME can
         // take considerably longer and must not hold the entire page in its
         // empty state while their plots are generated.
@@ -108,7 +115,6 @@ export default function Dashboard() {
   const currentStock = useMemo(() => stocks.find((item) => item.symbol === selectedSymbol) ?? stocks[0], [stocks, selectedSymbol]);
   const currentPrice = getContextValue(prediction?.context, ['Close', 'close', 'close_price']) ?? currentStock?.latest_close;
   const confidence = prediction?.predicted_probability ?? 0;
-  const chartData = useMemo(() => selectChartWindow(resolveChartSeriesFromPrediction(prediction ?? { symbol: selectedSymbol })), [prediction, selectedSymbol]);
   const probabilityBars = buildProbabilitySeries(prediction?.probabilities);
 
   return (
@@ -120,7 +126,7 @@ export default function Dashboard() {
               <CompanyLogo stock={currentStock} size="lg" />
               <div>
               <p className="text-sm font-semibold uppercase tracking-[0.28em] text-teal-200">Dashboard</p>
-              <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-white">{currentStock?.company_name ?? 'Indian stock intelligence'}</h1>
+              <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-white">{currentStock?.company_name ?? 'Stock market intelligence'}</h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
                 {currentStock?.symbol ? `${currentStock.symbol} · ` : ''}Review the latest dataset snapshot, confidence split, saved activity, and SHAP/LIME evidence.
               </p>
@@ -206,7 +212,7 @@ export default function Dashboard() {
         </motion.div>
       </section>
 
-      <MarketCharts data={chartData} />
+      <MarketCharts symbol={selectedSymbol} />
 
       <section className="grid gap-6 xl:grid-cols-2">
         <ChartCard title="SHAP Visualization" subtitle="Global and local interpretability for the selected stock.">

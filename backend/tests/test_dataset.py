@@ -12,8 +12,8 @@ class DatasetTests(unittest.TestCase):
         self.assertFalse(frame[[DATE_COLUMN, SYMBOL_COLUMN, TARGET_COLUMN, 'Close']].isna().any().any())
 
     def test_target_is_shifted_to_the_next_session(self):
-        frame = load_final_datasets(['RELIANCE'])
-        self.assertEqual(len(frame), 2129)
+        frame = load_final_datasets(['AAPL'])
+        self.assertEqual(len(frame), 1624)
         self.assertTrue(frame[DATE_COLUMN].is_monotonic_increasing)
 
     def test_every_date_contains_all_symbols(self):

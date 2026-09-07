@@ -44,6 +44,7 @@ export const dashboardApi = {
 
 export const marketApi = {
   prediction: (params) => api.get('/api/prediction', { params }),
+  candles: (symbol, period) => api.get(`/api/stocks/${symbol}/candles`, { params: { period } }),
   postPrediction: (payload) => api.post('/api/predict', payload),
   shap: (params) => api.get('/api/shap', { params }),
   lime: (params) => api.get('/api/lime', { params }),
