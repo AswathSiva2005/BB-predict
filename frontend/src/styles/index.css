@@ -66,10 +66,17 @@ a {
 .market-nav-link { position:relative; display:flex; align-items:center; gap:10px; padding:15px 14px; color:#747888; font-size:14px; font-weight:650; transition:.2s; }
 .market-nav-link:hover,.market-nav-link.active { color:#303448; }
 .market-nav-link.active::after { position:absolute; right:12px; bottom:0; left:12px; height:3px; border-radius:3px 3px 0 0; background:#00b386; content:''; }
-.market-tape { display:flex; justify-content:center; gap:52px; overflow:hidden; border-bottom:1px solid #eceef2; background:#fff; padding:13px 24px; color:#666b7e; font-size:12px; white-space:nowrap; }
-.market-tape b { margin-right:8px; color:#3f4457; }
-.market-tape em { margin-left:6px; color:#00a980; font-style:normal; font-weight:700; }
+.market-tape { overflow:hidden; border-bottom:1px solid #eceef2; background:#fff; padding:0; color:#666b7e; font-size:12px; white-space:nowrap; }
+.market-tape-track { display:inline-flex; width:max-content; align-items:center; gap:40px; padding:10px 24px; animation:market-scroll 32s linear infinite; will-change:transform; }
+.market-tape:hover .market-tape-track { animation-play-state:paused; }
+.market-tape-item { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
+.market-tape-logo { height:32px; width:32px; border-radius:8px; object-fit:contain; background:#f5f6f8; padding:4px; box-shadow:0 1px 3px rgba(15,23,42,.08); }
+.market-tape-info { display:inline-flex; align-items:center; gap:5px; }
+.market-tape b { margin-right:2px; color:#3f4457; }
+.market-tape em { margin-left:2px; color:#00a980; font-style:normal; font-weight:700; }
 .market-tape .negative { color:#ef5b43; }
+@keyframes market-scroll { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .market-tape-track { animation:none; } }
 
 .app-shell .glass-panel { background:#fff; border:1px solid #e5e7eb; box-shadow:none; backdrop-filter:none; }
 .app-shell .text-white { color:#34384b !important; }
@@ -101,4 +108,4 @@ input:focus, select:focus, button:focus-visible, a:focus-visible { outline: 2px 
 ::-webkit-scrollbar-track { background: #f5f6f8; }
 ::-webkit-scrollbar-thumb { background: #c9ccd5; border-radius: 999px; }
 
-@media (max-width: 1023px) { .market-tape { justify-content:flex-start; gap:28px; } .market-nav-link.active::after { top:8px; right:auto; bottom:8px; left:0; width:3px; height:auto; } }
+@media (max-width: 1023px) { .market-nav-link.active::after { top:8px; right:auto; bottom:8px; left:0; width:3px; height:auto; } }
