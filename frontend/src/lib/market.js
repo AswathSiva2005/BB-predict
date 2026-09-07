@@ -1,5 +1,11 @@
 const palette = ['#14b8a6', '#22c55e', '#f59e0b', '#38bdf8', '#f97316'];
 
+export const SIGNAL_COLORS = {
+  BUY: '#088F8F',
+  HOLD: '#FFA500',
+  SELL: '#D2042D',
+};
+
 function hashString(value) {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {

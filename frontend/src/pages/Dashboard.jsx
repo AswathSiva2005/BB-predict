@@ -8,7 +8,7 @@ import ProbabilityBars from '../components/ProbabilityBars';
 import StatBadge from '../components/StatBadge';
 import StatCard from '../components/StatCard';
 import { dashboardApi, marketApi, resolveArtifactUrl } from '../services/api';
-import { buildProbabilitySeries, formatCurrency, formatPercent } from '../lib/market';
+import { SIGNAL_COLORS, buildProbabilitySeries, formatCurrency, formatPercent } from '../lib/market';
 
 function getContextValue(context = {}, keys = []) {
   for (const key of keys) {
@@ -26,7 +26,6 @@ export default function Dashboard() {
   const [prediction, setPrediction] = useState(null);
   const [shapData, setShapData] = useState(null);
   const [limeData, setLimeData] = useState(null);
-  const [history, setHistory] = useState(null);
   const [exploreInsights, setExploreInsights] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,10 +38,9 @@ export default function Dashboard() {
       setError('');
 
       try {
-        const [dashboardResponse, stocksResponse, historyResponse] = await Promise.all([
+        const [dashboardResponse, stocksResponse] = await Promise.all([
           dashboardApi.dashboard(),
           dashboardApi.stocks(),
-          dashboardApi.history().catch(() => ({ data: null })),
         ]);
 
         if (!active) {
@@ -51,7 +49,6 @@ export default function Dashboard() {
 
         const nextDashboard = dashboardResponse.data;
         const nextStocks = stocksResponse.data.stocks ?? [];
-        const historyPayload = historyResponse.data;
 
         // A saved prediction can reference a symbol that is no longer part of
         // the tracked dataset (e.g. after switching to a different set of
@@ -68,7 +65,6 @@ export default function Dashboard() {
         setDashboard(nextDashboard);
         setStocks(nextStocks);
         setSelectedSymbol(symbol);
-        setHistory(historyPayload ?? { predictions: [], trainings: [] });
 
         const [predictionResponse, insightsResponse] = await Promise.all([
           latestPrediction ? Promise.resolve({ data: latestPrediction }) : marketApi.prediction({ symbol }),
@@ -117,6 +113,45 @@ export default function Dashboard() {
   const confidence = prediction?.predicted_probability ?? 0;
   const probabilityBars = buildProbabilitySeries(prediction?.probabilities);
 
+  const rangeMin = currentStock?.min_close ?? 0;
+  const rangeMax = currentStock?.max_close ?? 0;
+  const rangeSpan = rangeMax - rangeMin || 1;
+  const rangeLatestPct = Math.min(100, Math.max(0, ((currentStock?.latest_close ?? rangeMin) - rangeMin) / rangeSpan * 100));
+  const rangeAveragePct = Math.min(100, Math.max(0, ((currentStock?.average_close ?? rangeMin) - rangeMin) / rangeSpan * 100));
+  const rangeMarkerColor = SIGNAL_COLORS[currentStock?.latest_target?.toUpperCase()] ?? '#2dd4bf';
+
+  const loadSymbol = async (symbol) => {
+    setLoading(true);
+    setSelectedSymbol(symbol);
+    setError('');
+    setShapData(null);
+    setLimeData(null);
+    setExploreInsights(null);
+    try {
+      const [predictionResponse, insightsResponse] = await Promise.all([
+        marketApi.prediction({ symbol }),
+        dashboardApi.exploreInsights(symbol),
+      ]);
+      setPrediction(predictionResponse.data);
+      setExploreInsights(insightsResponse.data);
+
+      let shapResponse = null;
+      let limeResponse = null;
+      try {
+        shapResponse = await marketApi.shap({ symbol, sample_size: 40, max_display: 10 });
+        limeResponse = await marketApi.lime({ symbol, num_features: 10 });
+      } catch (explanationError) {
+        setError(explanationError?.response?.data?.detail ?? 'Prediction loaded, but explainability generation failed.');
+      }
+      setShapData(shapResponse?.data ?? null);
+      setLimeData(limeResponse?.data ?? null);
+    } catch (requestError) {
+      setError(requestError?.response?.data?.detail ?? 'Unable to switch stock.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-10">
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -136,38 +171,7 @@ export default function Dashboard() {
             <select
               value={selectedSymbol}
               disabled={loading}
-              onChange={async (event) => {
-                const symbol = event.target.value;
-                setLoading(true);
-                setSelectedSymbol(symbol);
-                setError('');
-                setShapData(null);
-                setLimeData(null);
-                setExploreInsights(null);
-                try {
-                  const [predictionResponse, insightsResponse] = await Promise.all([
-                    marketApi.prediction({ symbol }),
-                    dashboardApi.exploreInsights(symbol),
-                  ]);
-                  setPrediction(predictionResponse.data);
-                  setExploreInsights(insightsResponse.data);
-
-                  let shapResponse = null;
-                  let limeResponse = null;
-                  try {
-                    shapResponse = await marketApi.shap({ symbol, sample_size: 40, max_display: 10 });
-                    limeResponse = await marketApi.lime({ symbol, num_features: 10 });
-                  } catch (explanationError) {
-                    setError(explanationError?.response?.data?.detail ?? 'Prediction loaded, but explainability generation failed.');
-                  }
-                  setShapData(shapResponse?.data ?? null);
-                  setLimeData(limeResponse?.data ?? null);
-                } catch (requestError) {
-                  setError(requestError?.response?.data?.detail ?? 'Unable to switch stock.');
-                } finally {
-                  setLoading(false);
-                }
-              }}
+              onChange={(event) => loadSymbol(event.target.value)}
               className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none disabled:cursor-wait disabled:opacity-60 lg:w-56"
             >
               {stocks.map((stock) => (
@@ -247,34 +251,104 @@ export default function Dashboard() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <ChartCard title="Prediction History" subtitle="Latest saved actions and training activity.">
-          <div className="space-y-4">
-            {((history?.predictions?.length ? history.predictions : dashboard?.latest_prediction ? [dashboard.latest_prediction] : [])).slice(0, 5).map((item) => (
-              <div key={item.id ?? `${item.symbol}-${item.sample_index}`} className="rounded-3xl border border-white/10 bg-slate-950/60 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-display text-lg font-semibold text-white">{item.symbol ?? selectedSymbol}</p>
-                    <p className="mt-1 text-sm text-slate-400">{item.predicted_label ?? 'Prediction'}</p>
+        <ChartCard title="Market Watchlist" subtitle="Tracked symbols with latest close, move vs. average, and model bias — click a row to load it.">
+          <div className="space-y-2.5">
+            {stocks.map((stock) => {
+              const changePct = stock.average_close
+                ? ((stock.latest_close - stock.average_close) / stock.average_close) * 100
+                : 0;
+              const isNegative = changePct < 0;
+              const isActive = stock.symbol === selectedSymbol;
+              const badgeColor = SIGNAL_COLORS[stock.latest_target?.toUpperCase()] ?? '#94a3b8';
+
+              return (
+                <button
+                  type="button"
+                  key={stock.symbol}
+                  disabled={loading}
+                  onClick={() => loadSymbol(stock.symbol)}
+                  className={`flex w-full items-center gap-4 rounded-3xl border p-4 text-left transition-colors disabled:cursor-wait disabled:opacity-60 ${
+                    isActive ? 'border-teal-300/50 bg-teal-400/10' : 'border-white/10 bg-slate-950/60 hover:bg-white/5'
+                  }`}
+                >
+                  {stock.logo_url ? (
+                    <img
+                      src={stock.logo_url}
+                      alt=""
+                      className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1.5"
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-sm font-semibold text-white">{stock.symbol}</p>
+                    <p className="truncate text-xs text-slate-400">{stock.company_name}</p>
                   </div>
-                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-slate-200">
-                    {formatPercent(item.predicted_probability ?? confidence)}
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-white">{formatCurrency(stock.latest_close)}</p>
+                    <p className={`text-xs font-semibold ${isNegative ? 'text-rose-400' : 'text-emerald-400'}`}>
+                      {isNegative ? '' : '+'}
+                      {changePct.toFixed(2)}%
+                    </p>
                   </div>
-                </div>
-              </div>
-            ))}
+                  <span
+                    className="shrink-0 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                    style={{ borderColor: badgeColor, color: badgeColor }}
+                  >
+                    {stock.latest_target ?? '—'}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </ChartCard>
 
-        <ChartCard title="Explainability Snapshot" subtitle="Saved visual artifacts served from the backend.">
-          <div className="space-y-4 text-sm text-slate-300">
-            <p>SHAP and LIME figures are automatically generated by the backend and rendered here from the artifact server.</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <StatBadge label="SHAP" value={shapData?.model_name ?? 'Ready'} tone="teal" />
-              <StatBadge label="LIME" value={limeData?.model_name ?? 'Ready'} tone="emerald" />
+        <ChartCard title="Price Range" subtitle="Where the latest close sits within the stock's full historical range.">
+          <div className="space-y-6 text-sm text-slate-300">
+            <div>
+              <div className="relative mt-9 pb-3">
+                <div
+                  className="absolute -top-7 -translate-x-1/2 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold text-slate-950 shadow"
+                  style={{ left: `${rangeLatestPct}%`, background: rangeMarkerColor }}
+                >
+                  {formatCurrency(currentStock?.latest_close)}
+                </div>
+                <div className="h-3 rounded-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-500" />
+                <div
+                  className="absolute top-0 h-3 w-0.5 -translate-x-1/2 bg-white/70"
+                  style={{ left: `${rangeAveragePct}%` }}
+                  title="Historical average"
+                />
+                <div
+                  className="absolute -top-1.5 h-6 w-1 -translate-x-1/2 rounded-full bg-white shadow-[0_0_0_2px_rgba(15,23,42,0.85)]"
+                  style={{ left: `${rangeLatestPct}%` }}
+                  title="Latest close"
+                />
+              </div>
+              <div className="flex items-center justify-between text-sm font-semibold text-white">
+                <span>{formatCurrency(rangeMin)}</span>
+                <span>{formatCurrency(rangeMax)}</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-xs uppercase tracking-[0.18em] text-slate-500">
+                <span>All-time low</span>
+                <span>All-time high</span>
+              </div>
             </div>
-            <p className="rounded-3xl border border-white/10 bg-white/5 p-4 text-slate-300">
-              Selected row index: <span className="text-white">{prediction?.sample_index ?? 0}</span>
-            </p>
+
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Average</p>
+                <p className="mt-1 font-semibold text-white">{formatCurrency(currentStock?.average_close)}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Latest Close</p>
+                <p className="mt-1 font-semibold text-white">{formatCurrency(currentStock?.latest_close)}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Data Points</p>
+                <p className="mt-1 font-semibold text-white">{currentStock?.row_count ?? '—'}</p>
+              </div>
+            </div>
           </div>
         </ChartCard>
       </section>
